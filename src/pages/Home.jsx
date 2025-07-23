@@ -813,7 +813,7 @@ function Home() {
       label: 'Data Mahyani',
       children: (
         <div className="bg-white p-4 rounded-lg">
-          <div className="flex gap-4 mb-4">
+          <div className="lg:flex hidden gap-4 mb-4">
             <Input
               placeholder="Cari Nama atau NIK"
               value={searchText}
@@ -840,14 +840,15 @@ function Home() {
             <Button className="bg-green-700 text-white" onClick={exportToExcel}>Export ke Excel</Button>
           </div>
 
-          <Table
-            columns={columns}
-            dataSource={filteredData}
-            rowKey="id"
-            loading={loadingTable}
-            pagination={{ pageSize: 10 }}
-            // scroll={{ x: 1000 }}
-          />
+          <div className="overflow-x-auto">
+            <Table
+              columns={columns}
+              dataSource={filteredData}
+              rowKey="id"
+              scroll={{ x: 1000 }}
+              pagination={{ pageSize: 10 }}
+            />
+          </div>
 
           <Modal
             title={`Edit: ${editData?.nama}`}
@@ -1259,7 +1260,7 @@ function Home() {
         </div>
       </section> */}
       
-      <section id="input-lokasi" className="text-gray-600 py-10 lg:px-40 mb-10 bg-gray-100">
+      <section id="input-lokasi" className="text-gray-600 py-10 lg:px-40 px-4 mb-10 bg-gray-100">
         <Tabs defaultActiveKey="1" items={items} onChange={onChange} />
       </section>
     </>

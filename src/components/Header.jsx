@@ -1,3 +1,4 @@
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Menu } from "antd"
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -8,6 +9,11 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname;
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const toggleMenu = () => {
+    setMenuVisible(!menuVisible);
+  };
   const onClick = e => {
     setCurrent(e.key);
     if (e.key === 'mahyani') {
@@ -15,6 +21,7 @@ function Header() {
     } else {
       navigate(e.key);
     }
+    setMenuVisible(false)
   };
   useEffect(() => {
     if (path === "/") {
@@ -48,14 +55,22 @@ function Header() {
     },
   ];
   return (
-    <div className="w-full right-0 px-10 py-3 bg-white shadow">
-      <div className="flex lg:justify-between justify-center items-center">
+    <div className="w-full right-0 lg:px-10 px-2 py-3 bg-white shadow">
+      <div className="flex justify-between items-center">
         <div className="flex justify-center gap-4 items-center">
-          <img className="h-16" src="https://i.imgur.com/UTeZmP5.png" />
+          <img className="lg:h-16 h-10" src="https://i.imgur.com/UTeZmP5.png" />
           <h3 className="text-gray-800 lg:text-xl font-semibold">Pendataan Rumah Layak Huni</h3>
         </div>
-        <Menu onClick={onClick} selectedKeys={[current]} mode="horizontal" items={items} />
+        <Menu className="hidden lg:flex" onClick={onClick} selectedKeys={[current]} mode="horizontal" items={items} />
+        <div className='lg:hidden text-2xl text-gray-600' onClick={toggleMenu}>
+            {menuVisible ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+        </div>
       </div>
+      {menuVisible && (
+        <div className='absolute flex flex-col gap-4 pr-3 font-medium text-red-600 items-center z-50 w-full bg-gray-200 shadow z-[9999]'>
+          <Menu onClick={onClick} selectedKeys={[current]} mode="inline" items={items} />
+        </div>
+      )}
     </div>
   )
 }
