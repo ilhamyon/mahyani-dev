@@ -12,10 +12,10 @@ function App() {
       <Header />
       <Routes>
         <Route path="/peta-sebaran" element={<GISMap />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
+        {/* <Route path="/register" element={<Register />} /> */}
+        {/* <Route path="/login" element={<Login />} /> */}
         <Route path="/" element={<Home />} />
-        <Route path="/data-lokasi" element={<DataKegiatan />} />
+        {/* <Route path="/data-lokasi" element={<DataKegiatan />} /> */}
       </Routes>
     </Router>
   )

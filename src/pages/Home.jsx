@@ -39,14 +39,12 @@ const { Option } = Select;
 function Home() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check if the user is authenticated when the component mounts
-    if (!isAuthenticated()) {
-      // If not authenticated, redirect to the sign-in page
-      message.error("Kamu belum login. Silahkan login terlebir dahulu!");
-      navigate("/login");
-    }
-  }, [navigate]);
+  // useEffect(() => {
+  //   if (!isAuthenticated()) {
+  //     message.error("Kamu belum login. Silahkan login terlebir dahulu!");
+  //     navigate("/login");
+  //   }
+  // }, [navigate]);
 
   const [loading, setLoading] = useState(false);
   const [geometry, setGeometry] = useState({ lng: '', lat: '' });
