@@ -11,9 +11,10 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import axios from "axios";
-import PendataanCard from "../components/PendataanCard";
+import ZKupCard from "../components/ZKupCard";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import TextArea from "antd/es/input/TextArea";
 
 // Memperbaiki ikon marker
 delete L.Icon.Default.prototype._getIconUrl;
@@ -37,7 +38,7 @@ const UpdateMapCenter = ({ position }) => {
 
 const { Option } = Select;
 
-function Home() {
+function ZKup() {
   const navigate = useNavigate();
 
   // useEffect(() => {
@@ -90,7 +91,7 @@ function Home() {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      await instance.post('/pendataan', {
+      await instance.post('/zkup', {
         pengusul: values.pengusul,
         nama: values.nama,
         nik: values.nik,
@@ -99,13 +100,9 @@ function Home() {
         kabupaten: values.regency,
         kecamatan: values.district,
         desa: values.village,
-        kondisi_rumah: values.kondisiRumah,
-        status_kepemilikan: values.statusKepemilikan,
-        akses_air_bersih: values.airBersih,
-        ketersediaan_mck: values.mck,
-        foto_depan: imageUrlDepan,
-        foto_samping: imageUrlSamping,
-        foto_belakang: imageUrlBelakang,
+        jenis_usaha: values.jenisUsaha,
+        lokasi_usaha: values.lokasiUsaha,
+        foto_usaha: imageUrlDepan,
         latitude: geometry?.lat || 0,
         longitude: geometry?.lng || 0,
         altitude: geometry?.alt || 0,
@@ -114,8 +111,6 @@ function Home() {
       message.success('Data berhasil ditambahkan!');
       form.resetFields();
       setImageUrlDepan(null);
-      setImageUrlSamping(null);
-      setImageUrlBelakang(null);
     } catch (error) {
       console.error('Error adding data:', error);
       message.error('Gagal menambahkan data');
@@ -237,7 +232,7 @@ function Home() {
 
   const [dataList, setDataList] = useState([]);
   const [loadingTable, setLoadingTable] = useState(false);
-    const [geoData, setGeoData] = useState({
+  const [geoData, setGeoData] = useState({
     provinces: [],
     regencies: [],
     districts: [],
@@ -248,7 +243,7 @@ function Home() {
     const fetchData = async () => {
       setLoadingTable(true);
       try {
-        const response = await axios.get('https://mahyani.amayor.id/api/pendataan');
+        const response = await axios.get('https://mahyani.amayor.id/api/zkup');
         if (response.data?.data) {
           setDataList(response.data.data);
         }
@@ -357,7 +352,7 @@ function Home() {
       title: `Detail`,
       content: (
         <div className="mt-2">
-          <PendataanCard key={record.id} item={record} geoData={geoData} />
+          <ZKupCard key={record.id} item={record} geoData={geoData} />
         </div>
       ),
       width: 900,
@@ -428,11 +423,11 @@ function Home() {
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(dataList);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Mahyani');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ZKup');
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(data, 'data-mahyani.xlsx');
+    saveAs(data, 'data-zkup.xlsx');
   };
 
   const items = [
@@ -671,114 +666,32 @@ function Home() {
               {/* <p>{geometry}</p> */}
             </div>
 
-            <div className="flex flex-col w-full">
-              <div className="flex flex-col md:flex-row gap-4 w-full">
-                <div className="flex-1">
-                  <Form.Item
-                    label="Kondisi Rumah"
-                    name="kondisiRumah"
-                    rules={[{ required: true, message: 'Kondisi rumah harus diisi' }]}
-                  >
-                    <Select
-                      className="w-full"
-                      placeholder="Pilih kondisi"
-                      options={[
-                        { value: 'Rusak Ringan', label: 'Rusak Ringan' },
-                        { value: 'Rusak Sedang', label: 'Rusak Sedang' },
-                        { value: 'Rusak Berat', label: 'Rusak Berat' },
-                      ]}
-                    />
-                  </Form.Item>
-                </div>
+            <Form.Item
+              label="Jenis Usaha"
+              name="jenisUsaha"
+              rules={[{ required: true, message: 'Jenis usaha harus diisi' }]}
+            >
+              <Input className="w-full" placeholder="Contoh: Warung Kelontong, Pertanian, Perternakan" />
+            </Form.Item>
 
-                <div className="flex-1">
-                  <Form.Item
-                    label="Status Kepemilikan"
-                    name="statusKepemilikan"
-                    rules={[{ required: true, message: 'Status kepemilikan harus diisi' }]}
-                  >
-                    <Select
-                      className="w-full"
-                      placeholder="Pilih status"
-                      options={[
-                        { value: 'Milik Sendiri', label: 'Milik Sendiri' },
-                        { value: 'Sewa', label: 'Sewa' },
-                        { value: 'Menumpang', label: 'Menumpang' },
-                      ]}
-                    />
-                  </Form.Item>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-4 w-full">
-                <div className="flex-1">
-                  <Form.Item
-                    label="Akses Air Bersih"
-                    name="airBersih"
-                    rules={[{ required: true, message: 'Akses air bersih harus diisi' }]}
-                  >
-                    <Select
-                      className="w-full"
-                      placeholder="Pilih"
-                      options={[
-                        { value: 'Ada', label: 'Ada' },
-                        { value: 'Tidak Ada', label: 'Tidak Ada' },
-                      ]}
-                    />
-                  </Form.Item>
-                </div>
-
-                <div className="flex-1">
-                  <Form.Item
-                    label="Ketersediaan MCK"
-                    name="mck"
-                    rules={[{ required: true, message: 'Ketersediaan MCK harus diisi' }]}
-                  >
-                    <Select
-                      className="w-full"
-                      placeholder="Pilih"
-                      options={[
-                        { value: 'Ada', label: 'Ada' },
-                        { value: 'Tidak Ada', label: 'Tidak Ada' },
-                      ]}
-                    />
-                  </Form.Item>
-                </div>
-              </div>
-            </div>
+            <Form.Item
+              label="Lokasi Usaha"
+              name="lokasiUsaha"
+              rules={[{ required: true, message: 'Lokasi usaha harus diisi' }]}
+            >
+              <TextArea className="w-full" placeholder="Alamat lengkap lokasi usaha" />
+            </Form.Item>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
               <div>
                 <Form.Item
-                  label="Foto Rumah Depan"
-                  name="fotoDepan"
-                  rules={[{ required: true, message: 'Foto rumah depan diunggah' }]}
+                  label="Foto Usaha"
+                  name="fotoUsaha"
+                  rules={[{ required: true, message: 'Foto usaha depan diunggah' }]}
                 >
                   <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'depan')} />
                 </Form.Item>
-                {imageUrlDepan && <img src={imageUrlDepan} alt="Depan" className="mt-2 w-full h-32 object-cover rounded" />}
-              </div>
-
-              <div>
-                <Form.Item
-                  label="Foto Rumah Samping"
-                  name="fotoSamping"
-                  rules={[{ required: true, message: 'Foto rumah samping diunggah' }]}
-                >
-                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'samping')} />
-                </Form.Item>
-                {imageUrlSamping && <img src={imageUrlSamping} alt="Samping" className="mt-2 w-full h-32 object-cover rounded" />}
-              </div>
-
-              <div>
-                <Form.Item
-                  label="Foto Rumah Belakang"
-                  name="fotoBelakang"
-                  rules={[{ required: true, message: 'Foto rumah belakang diunggah' }]}
-                >
-                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'belakang')} />
-                </Form.Item>
-                {imageUrlBelakang && <img src={imageUrlBelakang} alt="Belakang" className="mt-2 w-full h-32 object-cover rounded" />}
+                {imageUrlDepan && <img src={imageUrlDepan} alt="Usaha" className="mt-2 w-full h-32 object-cover rounded" />}
               </div>
             </div>
 
@@ -811,7 +724,7 @@ function Home() {
     },
     {
       key: '2',
-      label: 'Data Mahyani',
+      label: 'Data ZKup',
       children: (
         <div className="bg-white p-4 rounded-lg">
           <div className="lg:flex hidden gap-4 mb-4">
@@ -1219,48 +1132,6 @@ function Home() {
   ];
   return (
     <>
-      {/* <section id="hero" className="relative bg-[url(https://ik.imagekit.io/tvlk/blog/2021/03/Mandalika.jpg)] bg-cover bg-center bg-no-repeat">
-        <div style={gradientStyle}></div>
-
-        <div className="relative mx-auto max-w-screen-xl px-4 py-32 sm:px-6 lg:flex lg:h-screen lg:items-center lg:px-8">
-          <div className="max-w-4xl text-center sm:text-left">
-            <h1 className="text-3xl font-extrabold sm:text-5xl text-gray-800">
-              GIS Peta Sebaran Pendayagunaan
-              <strong className="block font-extrabold text-green-600 mt-2"> BAZNAS NTB </strong>
-            </h1>
-
-            <p className="mt-4 max-w-4xl sm:text-xl/relaxed text-gray-700">
-              Aplikasi ini menggambarkan titik lokasi Data Penerima dan Peta Sebaran Pendayagunaan Bantuan BAZNAS NTB.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-4 text-center">
-              <a
-                href="#input-lokasi"
-                className="flex justify-center items-center w-full rounded bg-green-600 px-12 py-3 text-sm font-medium text-white shadow hover:bg-green-600 focus:outline-none focus:ring active:bg-green-500 sm:w-auto"
-              >
-                Input Data
-              </a>
-
-              <Link
-                to="/data-lokasi"
-                className="flex py-2 justify-center w-full rounded bg-white px-12 items-center text-sm shadow focus:outline-none focus:ring active:text-green-500 sm:w-auto"
-              >
-                <Button className="border-0 font-medium text-green-600 hover:text-green-600">
-                  Data Penerima
-                </Button>
-              </Link>
-
-              <a
-                onClick={deauthUser}
-                className="flex lg:hidden justify-center items-center w-full rounded bg-green-600 px-12 py-3 text-sm font-medium text-white shadow hover:bg-green-600 focus:outline-none focus:ring active:bg-rose-500 sm:w-auto"
-              >
-                Logout
-              </a>
-            </div>
-          </div>
-        </div>
-      </section> */}
-      
       <section id="input-lokasi" className="text-gray-600 py-10 lg:px-40 px-4 mb-10 bg-gray-100">
         <Tabs defaultActiveKey="1" items={items} onChange={onChange} />
       </section>
@@ -1268,4 +1139,4 @@ function Home() {
   )
 }
 
-export default Home
+export default ZKup

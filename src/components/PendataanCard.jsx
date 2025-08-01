@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Card, Row, Col, Tag, Grid } from 'antd';
+import { Card, Row, Col, Tag, Grid, Image } from 'antd';
 
 const { useBreakpoint } = Grid;
 
@@ -47,15 +47,15 @@ const PendataanCard = ({ item, geoData }) => {
         <strong>Foto Rumah:</strong>
         <Row gutter={[12, 12]} style={{ marginTop: 8 }}>
           <Col xs={24} sm={8}>
-            <img src={item.foto_depan} alt="Depan" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 160 }} />
+            <Image src={item.foto_depan} alt="Depan" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
             <p style={{ textAlign: 'center', marginTop: 4 }}>Depan</p>
           </Col>
           <Col xs={24} sm={8}>
-            <img src={item.foto_samping} alt="Samping" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 160 }} />
+            <Image src={item.foto_samping} alt="Samping" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
             <p style={{ textAlign: 'center', marginTop: 4 }}>Samping</p>
           </Col>
           <Col xs={24} sm={8}>
-            <img src={item.foto_belakang} alt="Belakang" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 160 }} />
+            <Image src={item.foto_belakang} alt="Belakang" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
             <p style={{ textAlign: 'center', marginTop: 4 }}>Belakang</p>
           </Col>
         </Row>

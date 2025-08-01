@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import Login from './pages/Login'
 import Home from './pages/Home'
@@ -5,6 +6,7 @@ import Register from './pages/Register'
 import DataKegiatan from './pages/DataKegiatan'
 import GISMap from './pages/GisMap'
 import Header from './components/Header'
+import ZKup from './pages/ZKup'
 
 function App() {
   return (
@@ -15,7 +17,7 @@ function App() {
         {/* <Route path="/register" element={<Register />} /> */}
         {/* <Route path="/login" element={<Login />} /> */}
         <Route path="/" element={<Home />} />
-        {/* <Route path="/data-lokasi" element={<DataKegiatan />} /> */}
+        <Route path="/zkup" element={<ZKup />} />
       </Routes>
     </Router>
   )

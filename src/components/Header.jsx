@@ -42,7 +42,7 @@ function Header() {
     {
       label: 'ZKup',
       key: 'zkup',
-      disabled: true
+      disabled: false
     },
     {
       label: 'Jamban',
