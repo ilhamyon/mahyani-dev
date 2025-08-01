@@ -59,7 +59,7 @@ function Header() {
       <div className="flex justify-between items-center">
         <div className="flex justify-center gap-4 items-center">
           <img className="lg:h-16 h-10" src="https://i.imgur.com/UTeZmP5.png" />
-          <h3 className="text-gray-800 lg:text-xl font-semibold">Pendataan Rumah Layak Huni</h3>
+          <h3 className="text-gray-800 lg:text-xl font-semibold">Bantuan BAZNAS NTB</h3>
         </div>
         <Menu className="hidden lg:flex" onClick={onClick} selectedKeys={[current]} mode="horizontal" items={items} />
         <div className='lg:hidden text-2xl text-gray-600' onClick={toggleMenu}>
