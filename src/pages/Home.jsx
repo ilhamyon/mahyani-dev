@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated, instance } from "../utils/auth";
 import { Button, Form, Input, message, Modal, Popconfirm, Select, Table, Tabs } from "antd";
@@ -54,6 +54,17 @@ function Home() {
   const [imageUrlDepan, setImageUrlDepan] = useState('');
   const [imageUrlSamping, setImageUrlSamping] = useState('');
   const [imageUrlBelakang, setImageUrlBelakang] = useState('');
+  const [imageUrlsProgress, setImageUrlsProgress] = useState({
+    progress0depan: '',
+    progress0samping: '',
+    progress0belakang: '',
+    progress50depan: '',
+    progress50samping: '',
+    progress50belakang: '',
+    progress100depan: '',
+    progress100samping: '',
+    progress100belakang: '',
+  });
   const [form] = Form.useForm();
 
   // Fungsi upload umum untuk semua
@@ -63,19 +74,29 @@ function Home() {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'h36o5eck'); // Ganti dengan preset Cloudinary Anda
+    formData.append('upload_preset', 'h36o5eck'); // Ganti dengan preset Cloudinary kamu
 
     try {
       const response = await axios.post(
-        'https://api.cloudinary.com/v1_1/dnuyb460n/image/upload', // Ganti dengan cloud name Anda
+        'https://api.cloudinary.com/v1_1/dnuyb460n/image/upload',
         formData
       );
 
       if (response.status === 200) {
         const url = response.data.secure_url;
-        if (tipe === 'depan') setImageUrlDepan(url);
-        if (tipe === 'samping') setImageUrlSamping(url);
-        if (tipe === 'belakang') setImageUrlBelakang(url);
+
+        // ✅ Cek apakah tipe adalah progress atau utama
+        if (['depan', 'samping', 'belakang'].includes(tipe)) {
+          if (tipe === 'depan') setImageUrlDepan(url);
+          if (tipe === 'samping') setImageUrlSamping(url);
+          if (tipe === 'belakang') setImageUrlBelakang(url);
+        } else {
+          // untuk progress seperti 'progress0depan', 'progress50belakang', dll
+          setImageUrlsProgress(prev => ({
+            ...prev,
+            [tipe]: url
+          }));
+        }
 
         message.success(`Foto ${tipe} berhasil diunggah`);
       } else {
@@ -103,6 +124,7 @@ function Home() {
         status_kepemilikan: values.statusKepemilikan,
         akses_air_bersih: values.airBersih,
         ketersediaan_mck: values.mck,
+        tahun_realisasi: values.tahunRealisasi,
         foto_depan: imageUrlDepan,
         foto_samping: imageUrlSamping,
         foto_belakang: imageUrlBelakang,
@@ -122,6 +144,24 @@ function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetEditState = () => {
+    editForm.resetFields();
+    setImageUrlDepan('');
+    setImageUrlSamping('');
+    setImageUrlBelakang('');
+    setImageUrlsProgress({
+      progress0depan: '',
+      progress0samping: '',
+      progress0belakang: '',
+      progress50depan: '',
+      progress50samping: '',
+      progress50belakang: '',
+      progress100depan: '',
+      progress100samping: '',
+      progress100belakang: '',
+    });
   };
 
   const onFinishFailed = (errorInfo) => {
@@ -232,6 +272,9 @@ function Home() {
 
   const handleSave = () => {
     setGeometry({ lat: position.lat, lng: position.lng });
+    if (markerRef.current) {
+      markerRef.current.closePopup();
+    }
     message.success(`Berhasil menyimpan titik lokasi`);
   };
 
@@ -338,7 +381,7 @@ function Home() {
       render: (_, record) => (
         <div className="flex gap-2">
           <Button size="small" onClick={() => handleView(record)}>Lihat</Button>
-          {/* <Button size="small" type="primary" onClick={() => handleEdit(record)}>Edit</Button> */}
+          <Button size="small" type="primary" onClick={() => handleEdit(record)}>Edit</Button>
           <Popconfirm
             title="Yakin ingin hapus data ini?"
             onConfirm={() => handleDelete(record.id)}
@@ -382,6 +425,7 @@ function Home() {
   const [editForm] = Form.useForm();
   const [filters, setFilters] = useState({ pengusul: '', kabupaten: '' });
   const [searchText, setSearchText] = useState('');
+  const markerRef = useRef(null);
 
   const filteredData = dataList.filter(item =>
     (!filters.pengusul || item.pengusul === filters.pengusul) &&
@@ -394,6 +438,14 @@ function Home() {
 
   const handleEdit = (record) => {
     setEditData(record);
+
+    const posisi = {
+      lat: record.latitude || 0,
+      lng: record.longitude || 0,
+    };
+    setPosition(posisi);
+
+    // Set ke Form
     editForm.setFieldsValue({
       ...record,
       jumlahKeluarga: record.jumlah_keluarga,
@@ -404,26 +456,98 @@ function Home() {
       province: '52',
       regency: record.kabupaten,
       district: record.kecamatan,
+      tahunRealisasi: record.tahun_realisasi,
       village: record.desa,
-      lat: record.latitude,
-      lng: record.longitude,
+      lat: posisi.lat,
+      lng: posisi.lng,
     });
+
+    // ✅ Set nilai gambar utama
+    setImageUrlDepan(record.foto_depan || '');
+    setImageUrlSamping(record.foto_samping || '');
+    setImageUrlBelakang(record.foto_belakang || '');
+
+    // ✅ Set nilai gambar progres
+    setImageUrlsProgress({
+      progress0depan: record.foto_progres_0_depan || '',
+      progress0samping: record.foto_progres_0_samping || '',
+      progress0belakang: record.foto_progres_0_belakang || '',
+      progress50depan: record.foto_progres_50_depan || '',
+      progress50samping: record.foto_progres_50_samping || '',
+      progress50belakang: record.foto_progres_50_belakang || '',
+      progress100depan: record.foto_progres_100_depan || '',
+      progress100samping: record.foto_progres_100_samping || '',
+      progress100belakang: record.foto_progres_100_belakang || '',
+    });
+
     setEditModalVisible(true);
   };
 
   const handleEditSubmit = async () => {
     try {
-      const updated = await editForm.validateFields();
-      await axios.put(`https://mahyani.amayor.id/api/pendataan/${editData.id}`, updated);
+      const values = await editForm.validateFields();
+
+      // Validasi titik lokasi
+      if (!geometry?.lat || !geometry?.lng || geometry.lat === 0 || geometry.lng === 0) {
+        message.error('Anda belum tentukan titik lokasi');
+        return;
+      }
+
+      const payload = {
+        pengusul: values.pengusul,
+        nama: values.nama,
+        nik: values.nik,
+        jumlah_keluarga: values.jumlahKeluarga,
+        telepon: values.telepon,
+        kabupaten: values.regency,
+        kecamatan: values.district,
+        desa: values.village,
+        kondisi_rumah: values.kondisiRumah,
+        status_kepemilikan: values.statusKepemilikan,
+        akses_air_bersih: values.airBersih,
+        ketersediaan_mck: values.mck,
+        tahun_realisasi: values.tahunRealisasi,
+        foto_depan: imageUrlDepan,
+        foto_samping: imageUrlSamping,
+        foto_belakang: imageUrlBelakang,
+        latitude: geometry.lat,
+        longitude: geometry.lng,
+        altitude: geometry?.alt || 0,
+
+        // Foto Progres 0%
+        foto_progres_0_depan: imageUrlsProgress.progress0depan,
+        foto_progres_0_samping: imageUrlsProgress.progress0samping,
+        foto_progres_0_belakang: imageUrlsProgress.progress0belakang,
+
+        // Foto Progres 50%
+        foto_progres_50_depan: imageUrlsProgress.progress50depan,
+        foto_progres_50_samping: imageUrlsProgress.progress50samping,
+        foto_progres_50_belakang: imageUrlsProgress.progress50belakang,
+
+        // Foto Progres 100%
+        foto_progres_100_depan: imageUrlsProgress.progress100depan,
+        foto_progres_100_samping: imageUrlsProgress.progress100samping,
+        foto_progres_100_belakang: imageUrlsProgress.progress100belakang,
+      };
+
+      await axios.put(`https://mahyani.amayor.id/api/pendataan/${editData.id}`, payload);
+
       message.success('Data berhasil diperbarui');
       setEditModalVisible(false);
-      // refresh data
+
       const { data } = await axios.get('https://mahyani.amayor.id/api/pendataan');
       setDataList(data.data);
+
+      // Tutup popup peta
+      setTimeout(() => {
+        document.querySelector('.leaflet-popup-close-button')?.click();
+      }, 100);
     } catch (err) {
+      console.error(err);
       message.error('Gagal memperbarui data');
     }
   };
+
 
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(dataList);
@@ -434,6 +558,23 @@ function Home() {
     const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
     saveAs(data, 'data-mahyani.xlsx');
   };
+  console.log('position:', position)
+  const mapRef = useRef(null);
+  useEffect(() => {
+    if (editModalVisible && mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize();
+      }, 300);
+    }
+  }, [editModalVisible]);
+  useEffect(() => {
+    if (editModalVisible) {
+      setTimeout(() => {
+        const map = window.L?.map?.instances?.[0];
+        map?.invalidateSize();
+      }, 600);
+    }
+  }, [editModalVisible]);
 
   const items = [
     {
@@ -747,6 +888,20 @@ function Home() {
               </div>
             </div>
 
+            <Form.Item
+              label="Tahun Realisasi"
+              name="tahunRealisasi"
+              rules={[
+                { required: false, message: 'Tahun realisasi harus diisi' },
+                {
+                  pattern: /^\d{4}$/,
+                  message: 'Masukkan tahun dengan format 4 digit (contoh: 2025)',
+                },
+              ]}
+            >
+              <Input placeholder="Masukkan tahun, contoh: 2025" maxLength={4} />
+            </Form.Item>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
               <div>
                 <Form.Item
@@ -852,11 +1007,18 @@ function Home() {
           </div>
 
           <Modal
+            onCancel={() => {
+              setEditModalVisible(false);
+              resetEditState();
+              setTimeout(() => {
+                document.querySelector('.leaflet-popup-close-button')?.click();
+              }, 100); // memastikan DOM ada
+            }}
             title={`Edit: ${editData?.nama}`}
             open={editModalVisible}
-            onCancel={() => setEditModalVisible(false)}
+            // onCancel={() => setEditModalVisible(false)}
             onOk={handleEditSubmit}
-            width={800}
+            width={950}
             centered
           >
             <Form layout="vertical" form={editForm}>
@@ -1049,7 +1211,12 @@ function Home() {
                   <Button className="bg-green-600 text-white" onClick={handleUseCurrentLocation}>Gunakan Lokasi Saat Ini</Button>
                 </div>
                 <div>
-                  <MapContainer center={position} zoom={13} style={{ height: '60vh', width: '100%' }}>
+                  <MapContainer
+                    center={position}
+                    zoom={13}
+                    style={{ height: '60vh', width: '100%' }}
+                  >
+                    <ResizeMapOnModalOpen visible={editModalVisible} />
                     <UpdateMapCenter position={position} />
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -1068,11 +1235,23 @@ function Home() {
                         <div>
                           <p>Latitude: {position.lat.toFixed(4)}</p>
                           <p>Longitude: {position.lng.toFixed(4)}</p>
-                          <Button className="bg-green-600 text-white" onClick={handleSave}>Simpan Titik</Button>
+                          <Button
+                            className="bg-green-600 text-white"
+                            // onClick={handleSave}
+                            onClick={() => {
+                              handleSave();
+                              setTimeout(() => {
+                                document.querySelector('.leaflet-popup-close-button')?.click();
+                              }, 100); // memastikan DOM ada
+                            }}
+                          >
+                            Simpan Titik
+                          </Button>
                         </div>
                       </Popup>
                     </Marker>
                   </MapContainer>
+
                 </div>
               </Form.Item>
               <div className="text-gray-400 text-xs -mt-4 mb-6">
@@ -1158,12 +1337,26 @@ function Home() {
                 </div>
               </div>
 
+              <Form.Item
+                label="Tahun Realisasi"
+                name="tahunRealisasi"
+                rules={[
+                  { required: false, message: 'Tahun realisasi harus diisi' },
+                  {
+                    pattern: /^\d{4}$/,
+                    message: 'Masukkan tahun dengan format 4 digit (contoh: 2025)',
+                  },
+                ]}
+              >
+                <Input placeholder="Masukkan tahun, contoh: 2025" maxLength={4} />
+              </Form.Item>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                 <div>
                   <Form.Item
                     label="Foto Rumah Depan"
                     name="fotoDepan"
-                    rules={[{ required: true, message: 'Foto rumah depan diunggah' }]}
+                    rules={[{ required: false, message: 'Foto rumah depan diunggah' }]}
                   >
                     <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'depan')} />
                   </Form.Item>
@@ -1174,7 +1367,7 @@ function Home() {
                   <Form.Item
                     label="Foto Rumah Samping"
                     name="fotoSamping"
-                    rules={[{ required: true, message: 'Foto rumah samping diunggah' }]}
+                    rules={[{ required: false, message: 'Foto rumah samping diunggah' }]}
                   >
                     <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'samping')} />
                   </Form.Item>
@@ -1185,12 +1378,46 @@ function Home() {
                   <Form.Item
                     label="Foto Rumah Belakang"
                     name="fotoBelakang"
-                    rules={[{ required: true, message: 'Foto rumah belakang diunggah' }]}
+                    rules={[{ required: false, message: 'Foto rumah belakang diunggah' }]}
                   >
                     <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'belakang')} />
                   </Form.Item>
                   {imageUrlBelakang && <img src={imageUrlBelakang} alt="Belakang" className="mt-2 w-full h-32 object-cover rounded" />}
                 </div>
+              </div>
+
+              <h3 className="mt-6 mb-2 font-semibold text-gray-700">Foto Progres</h3>
+
+              <div className="space-y-6">
+                {['0', '50', '100'].map((persen) => (
+                  <div key={`progress-${persen}`}>
+                    <h4 className="font-medium text-sm mb-2">Progress {persen}%</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {['depan', 'samping', 'belakang'].map((posisi) => (
+                        <div key={`progress-${persen}-${posisi}`}>
+                          <Form.Item
+                            label={`Foto ${posisi.charAt(0).toUpperCase() + posisi.slice(1)}`}
+                            name={`fotoProgress${persen}${posisi}`}
+                            rules={[{ required: false, message: `Foto ${posisi} ${persen}% harus diunggah` }]}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileChange(e, `progress${persen}${posisi}`)}
+                            />
+                          </Form.Item>
+                          {imageUrlsProgress[`progress${persen}${posisi}`] && (
+                            <img
+                              src={imageUrlsProgress[`progress${persen}${posisi}`]}
+                              alt={`Foto ${posisi} ${persen}%`}
+                              className="mt-2 w-full h-32 object-cover rounded"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <Form.Item
@@ -1267,5 +1494,21 @@ function Home() {
     </>
   )
 }
+
+// eslint-disable-next-line react/prop-types
+const ResizeMapOnModalOpen = ({ visible }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (visible) {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 50); // waktu tunggu agar modal selesai transisi
+    }
+  }, [visible, map]);
+
+  return null;
+};
+
 
 export default Home

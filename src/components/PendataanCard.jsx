@@ -1,14 +1,56 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import { Card, Row, Col, Tag, Grid, Image } from 'antd';
+import { Card, Row, Col, Tag, Grid, Image, Collapse } from 'antd';
 
 const { useBreakpoint } = Grid;
+const { Panel } = Collapse;
 
 const PendataanCard = ({ item, geoData }) => {
   const screens = useBreakpoint();
-  // eslint-disable-next-line no-unused-vars
   const isMobile = !screens.md;
 
   const getNameById = (id, list) => list?.find((i) => i.id === id)?.name || '';
+
+  const renderProgressSection = (progress) => {
+    const labels = ['depan', 'samping', 'belakang'];
+    const validPhotos = labels.filter(
+      (label) => item[`foto_progres_${progress}_${label}`]
+    );
+
+    if (validPhotos.length === 0) return null;
+
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <strong>Progress {progress}%:</strong>
+        <Row gutter={[12, 12]} style={{ marginTop: 8 }}>
+          {validPhotos.map((label) => {
+            const key = `foto_progres_${progress}_${label}`;
+            const labelTitle = label.charAt(0).toUpperCase() + label.slice(1);
+            return (
+              <Col xs={24} sm={8} key={`${progress}-${label}`}>
+                <Image
+                  src={item[key]}
+                  alt={`${labelTitle} ${progress}%`}
+                  style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }}
+                />
+                <p style={{ textAlign: 'center', marginTop: 4 }}>{labelTitle}</p>
+              </Col>
+            );
+          })}
+        </Row>
+      </div>
+    );
+  };
+
+  const hasAnyProgressPhoto =
+    ['0', '50', '100'].some(progress =>
+      ['depan', 'samping', 'belakang'].some(
+        label => item[`foto_progres_${progress}_${label}`]
+      )
+    );
+
+  const hasAnyFotoRumah =
+    item.foto_depan || item.foto_samping || item.foto_belakang;
 
   return (
     <Card
@@ -40,26 +82,46 @@ const PendataanCard = ({ item, geoData }) => {
           <p><strong>Status Kepemilikan:</strong> <Tag color="blue">{item.status_kepemilikan}</Tag></p>
           <p><strong>Akses Air Bersih:</strong> <Tag color={item.akses_air_bersih === 'Ada' ? 'green' : 'red'}>{item.akses_air_bersih}</Tag></p>
           <p><strong>Ketersediaan MCK:</strong> <Tag color={item.ketersediaan_mck === 'Ada' ? 'green' : 'red'}>{item.ketersediaan_mck}</Tag></p>
+          <p><strong>Tahun Realisasi:</strong> {item.tahun_realisasi || '-'}</p>
         </Col>
       </Row>
 
-      <div style={{ marginTop: 16 }}>
-        <strong>Foto Rumah:</strong>
-        <Row gutter={[12, 12]} style={{ marginTop: 8 }}>
-          <Col xs={24} sm={8}>
-            <Image src={item.foto_depan} alt="Depan" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
-            <p style={{ textAlign: 'center', marginTop: 4 }}>Depan</p>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Image src={item.foto_samping} alt="Samping" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
-            <p style={{ textAlign: 'center', marginTop: 4 }}>Samping</p>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Image src={item.foto_belakang} alt="Belakang" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
-            <p style={{ textAlign: 'center', marginTop: 4 }}>Belakang</p>
-          </Col>
-        </Row>
-      </div>
+      {(hasAnyFotoRumah || hasAnyProgressPhoto) && (
+        <Collapse ghost style={{ marginTop: 24 }}>
+          {hasAnyFotoRumah && (
+            <Panel header="Lihat Foto Rumah" key="foto-rumah">
+              <Row gutter={[12, 12]} style={{ marginTop: 8 }}>
+                {item.foto_depan && (
+                  <Col xs={24} sm={8}>
+                    <Image src={item.foto_depan} alt="Depan" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
+                    <p style={{ textAlign: 'center', marginTop: 4 }}>Depan</p>
+                  </Col>
+                )}
+                {item.foto_samping && (
+                  <Col xs={24} sm={8}>
+                    <Image src={item.foto_samping} alt="Samping" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
+                    <p style={{ textAlign: 'center', marginTop: 4 }}>Samping</p>
+                  </Col>
+                )}
+                {item.foto_belakang && (
+                  <Col xs={24} sm={8}>
+                    <Image src={item.foto_belakang} alt="Belakang" style={{ width: '100%', borderRadius: 8, objectFit: 'cover', height: 100 }} />
+                    <p style={{ textAlign: 'center', marginTop: 4 }}>Belakang</p>
+                  </Col>
+                )}
+              </Row>
+            </Panel>
+          )}
+
+          {hasAnyProgressPhoto && (
+            <Panel header="Lihat Foto Progress Pembangunan" key="foto-progress">
+              {renderProgressSection('0')}
+              {renderProgressSection('50')}
+              {renderProgressSection('100')}
+            </Panel>
+          )}
+        </Collapse>
+      )}
     </Card>
   );
 };
