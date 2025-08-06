@@ -102,6 +102,7 @@ function ZKup() {
         desa: values.village,
         jenis_usaha: values.jenisUsaha,
         lokasi_usaha: values.lokasiUsaha,
+        periode: values.periode,
         foto_usaha: imageUrlDepan,
         latitude: geometry?.lat || 0,
         longitude: geometry?.lng || 0,
@@ -111,6 +112,7 @@ function ZKup() {
       message.success('Data berhasil ditambahkan!');
       form.resetFields();
       setImageUrlDepan(null);
+      fetchData();
     } catch (error) {
       console.error('Error adding data:', error);
       message.error('Gagal menambahkan data');
@@ -239,60 +241,60 @@ function ZKup() {
     villages: [],
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoadingTable(true);
-      try {
-        const response = await axios.get('https://mahyani.amayor.id/api/zkup');
-        if (response.data?.data) {
-          setDataList(response.data.data);
-        }
-
-        const result = response.data.data;
-
-        const provinceIds = ['52']; // ID untuk NTB
-        const regencyIds = [...new Set(result.map((item) => item.kabupaten))];
-        const districtIds = [...new Set(result.map((item) => item.kecamatan))];
-        // eslint-disable-next-line no-unused-vars
-        const villageIds = [...new Set(result.map((item) => item.desa))];
-
-        const [provinces, regencies, districts, villages] = await Promise.all([
-          axios.get("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json").then((res) => res.data),
-
-          Promise.all(
-            provinceIds.map((id) =>
-              axios
-                .get(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
-                .then((res) => res.data)
-            )
-          ).then((data) => data.flat()),
-
-          Promise.all(
-            regencyIds.map((id) =>
-              axios
-                .get(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
-                .then((res) => res.data)
-            )
-          ).then((data) => data.flat()),
-
-          Promise.all(
-            districtIds.map((id) =>
-              axios
-                .get(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
-                .then((res) => res.data)
-            )
-          ).then((data) => data.flat()),
-        ]);
-
-        // 4. Set data wilayah
-        setGeoData({ provinces, regencies, districts, villages });
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoadingTable(false);
+  const fetchData = async () => {
+    setLoadingTable(true);
+    try {
+      const response = await axios.get('https://mahyani.amayor.id/api/zkup');
+      if (response.data?.data) {
+        setDataList(response.data.data);
       }
-    };
 
+      const result = response.data.data;
+
+      const provinceIds = ['52']; // ID untuk NTB
+      const regencyIds = [...new Set(result.map((item) => item.kabupaten))];
+      const districtIds = [...new Set(result.map((item) => item.kecamatan))];
+      // eslint-disable-next-line no-unused-vars
+      const villageIds = [...new Set(result.map((item) => item.desa))];
+
+      const [provinces, regencies, districts, villages] = await Promise.all([
+        axios.get("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json").then((res) => res.data),
+
+        Promise.all(
+          provinceIds.map((id) =>
+            axios
+              .get(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
+              .then((res) => res.data)
+          )
+        ).then((data) => data.flat()),
+
+        Promise.all(
+          regencyIds.map((id) =>
+            axios
+              .get(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
+              .then((res) => res.data)
+          )
+        ).then((data) => data.flat()),
+
+        Promise.all(
+          districtIds.map((id) =>
+            axios
+              .get(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
+              .then((res) => res.data)
+          )
+        ).then((data) => data.flat()),
+      ]);
+
+      // 4. Set data wilayah
+      setGeoData({ provinces, regencies, districts, villages });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoadingTable(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -302,6 +304,12 @@ function ZKup() {
   const getNameById = (id, list) => list?.find((i) => i.id === id)?.name || '-';
   
   const columns = [
+    {
+      title: 'No.',
+      key: 'no',
+      width: 60,
+      render: (_, __, index) => index + 1,
+    },
     {
       title: 'Nama',
       dataIndex: 'nama',
@@ -400,6 +408,7 @@ function ZKup() {
       regency: record.kabupaten,
       district: record.kecamatan,
       village: record.desa,
+      periode: record.periode,
       lat: record.latitude,
       lng: record.longitude,
     });
@@ -680,6 +689,14 @@ function ZKup() {
               rules={[{ required: true, message: 'Lokasi usaha harus diisi' }]}
             >
               <TextArea className="w-full" placeholder="Alamat lengkap lokasi usaha" />
+            </Form.Item>
+
+            <Form.Item
+              label="Periode"
+              name="periode"
+              rules={[{ required: false, message: 'Periode harus diisi' }]}
+            >
+              <Input className="w-full" placeholder="Periode" />
             </Form.Item>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">

@@ -138,6 +138,7 @@ function Home() {
       setImageUrlDepan(null);
       setImageUrlSamping(null);
       setImageUrlBelakang(null);
+      fetchData();
     } catch (error) {
       console.error('Error adding data:', error);
       message.error('Gagal menambahkan data');
@@ -287,60 +288,60 @@ function Home() {
     villages: [],
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoadingTable(true);
-      try {
-        const response = await axios.get('https://mahyani.amayor.id/api/pendataan');
-        if (response.data?.data) {
-          setDataList(response.data.data);
-        }
-
-        const result = response.data.data;
-
-        const provinceIds = ['52']; // ID untuk NTB
-        const regencyIds = [...new Set(result.map((item) => item.kabupaten))];
-        const districtIds = [...new Set(result.map((item) => item.kecamatan))];
-        // eslint-disable-next-line no-unused-vars
-        const villageIds = [...new Set(result.map((item) => item.desa))];
-
-        const [provinces, regencies, districts, villages] = await Promise.all([
-          axios.get("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json").then((res) => res.data),
-
-          Promise.all(
-            provinceIds.map((id) =>
-              axios
-                .get(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
-                .then((res) => res.data)
-            )
-          ).then((data) => data.flat()),
-
-          Promise.all(
-            regencyIds.map((id) =>
-              axios
-                .get(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
-                .then((res) => res.data)
-            )
-          ).then((data) => data.flat()),
-
-          Promise.all(
-            districtIds.map((id) =>
-              axios
-                .get(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
-                .then((res) => res.data)
-            )
-          ).then((data) => data.flat()),
-        ]);
-
-        // 4. Set data wilayah
-        setGeoData({ provinces, regencies, districts, villages });
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoadingTable(false);
+  const fetchData = async () => {
+    setLoadingTable(true);
+    try {
+      const response = await axios.get('https://mahyani.amayor.id/api/pendataan');
+      if (response.data?.data) {
+        setDataList(response.data.data);
       }
-    };
 
+      const result = response.data.data;
+
+      const provinceIds = ['52']; // ID untuk NTB
+      const regencyIds = [...new Set(result.map((item) => item.kabupaten))];
+      const districtIds = [...new Set(result.map((item) => item.kecamatan))];
+      // eslint-disable-next-line no-unused-vars
+      const villageIds = [...new Set(result.map((item) => item.desa))];
+
+      const [provinces, regencies, districts, villages] = await Promise.all([
+        axios.get("https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json").then((res) => res.data),
+
+        Promise.all(
+          provinceIds.map((id) =>
+            axios
+              .get(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
+              .then((res) => res.data)
+          )
+        ).then((data) => data.flat()),
+
+        Promise.all(
+          regencyIds.map((id) =>
+            axios
+              .get(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
+              .then((res) => res.data)
+          )
+        ).then((data) => data.flat()),
+
+        Promise.all(
+          districtIds.map((id) =>
+            axios
+              .get(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
+              .then((res) => res.data)
+          )
+        ).then((data) => data.flat()),
+      ]);
+
+      // 4. Set data wilayah
+      setGeoData({ provinces, regencies, districts, villages });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoadingTable(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -350,6 +351,12 @@ function Home() {
   const getNameById = (id, list) => list?.find((i) => i.id === id)?.name || '-';
   
   const columns = [
+    {
+      title: 'No.',
+      key: 'no',
+      width: 60,
+      render: (_, __, index) => index + 1,
+    },
     {
       title: 'Nama',
       dataIndex: 'nama',
@@ -542,6 +549,7 @@ function Home() {
       setTimeout(() => {
         document.querySelector('.leaflet-popup-close-button')?.click();
       }, 100);
+      fetchData();
     } catch (err) {
       console.error(err);
       message.error('Gagal memperbarui data');

@@ -38,6 +38,7 @@ const ZKupCard = ({ item, geoData }) => {
         <Col xs={24} md={12}>
           <p><strong>Jenis Usaha:</strong> {item.jenis_usaha}</p>
           <p><strong>Lokasi Usaha:</strong> {item.lokasi_usaha}</p>
+          <p><strong>Periode:</strong> {item.periode}</p>
         </Col>
       </Row>
 
