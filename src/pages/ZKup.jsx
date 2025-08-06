@@ -370,10 +370,10 @@ function ZKup() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://mahyani.amayor.id/api/pendataan/${id}`);
+      await axios.delete(`https://mahyani.amayor.id/api/zkup/${id}`);
       message.success('Data berhasil dihapus');
       // Refresh data
-      const updated = await axios.get(`https://mahyani.amayor.id/api/pendataan`);
+      const updated = await axios.get(`https://mahyani.amayor.id/api/zkup`);
       setDataList(updated.data.data);
     } catch (err) {
       message.error('Gagal menghapus data');
