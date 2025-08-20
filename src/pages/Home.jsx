@@ -609,6 +609,10 @@ function Home() {
                 placeholder="Pilih pengusul"
                 options={[
                   {
+                    value: 'BAZNAS Prov NTB',
+                    label: 'BAZNAS Prov NTB',
+                  },
+                  {
                     value: 'BAZNAS Mataram',
                     label: 'BAZNAS Mataram',
                   },
