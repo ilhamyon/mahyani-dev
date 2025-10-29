@@ -723,6 +723,7 @@ function Home() {
               rowKey="id"
               scroll={{ x: 1000 }}
               pagination={{ pageSize: 10 }}
+              loading={loadingTable}
             />
           </div>
 
