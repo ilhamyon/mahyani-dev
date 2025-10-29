@@ -112,6 +112,8 @@ instance.interceptors.request.use(
 );
 
 // === Interceptor untuk auto redirect jika error 401 ===
+let hasShownSessionExpired = false; // flag global
+
 instance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -121,11 +123,14 @@ instance.interceptors.response.use(
       // Jika token invalid / belum login
       clearToken();
 
-      // Tampilkan pesan
-      message.warning("Sesi login Anda telah berakhir. Silakan login kembali.");
+      // Tampilkan pesan hanya sekali
+      if (!hasShownSessionExpired) {
+        message.warning("Sesi login Anda telah berakhir. Silakan login kembali.");
+        hasShownSessionExpired = true;
+      }
 
       // Redirect ke halaman login (hindari infinite loop)
-      if (isBrowser && window.location.pathname !== "/login") {
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         setTimeout(() => {
           window.location.replace("/login");
         }, 1000);
@@ -135,3 +140,4 @@ instance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
