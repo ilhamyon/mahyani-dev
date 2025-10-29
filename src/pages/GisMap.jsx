@@ -9,6 +9,7 @@ import axios from "axios";
 import PendataanCard from "../components/PendataanCard";
 import ZKupCard from "../components/ZKupCard";
 import { Select } from "antd";
+import { instance } from "../utils/auth";
 
 const { Option } = Select;
 
@@ -27,7 +28,7 @@ const GISMap = () => {
     const fetchData = async () => {
       try {
         const endpoint = source === "pendataan" ? "pendataan" : "zkup";
-        const { data: response } = await axios.get(`https://mahyani.amayor.id/api/${endpoint}`);
+        const { data: response } = await instance.get(`/${endpoint}`);
         const result = response.data;
 
         setData(result);

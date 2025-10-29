@@ -1,46 +1,137 @@
 import { message } from "antd";
-import axios from 'axios';
+import axios from "axios";
 
-const isBrowser = typeof window !== "undefined"; // Check if running in the browser
+const isBrowser = typeof window !== "undefined"; // Cek apakah di browser
 
+// === Konfigurasi Axios ===
+export const instance = axios.create({
+  baseURL: "https://mahyani.amayor.id/api", // ubah jika server lokal: http://localhost:3000/api
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// === Token Helpers ===
 export const getToken = () => {
-  return isBrowser ? localStorage.getItem("token") : null;
+  return isBrowser ? localStorage.getItem("baznas_token") : null;
 };
 
 export const clearToken = () => {
-  isBrowser && localStorage.removeItem("token");
+  if (isBrowser) {
+    localStorage.removeItem("baznas_token");
+    localStorage.removeItem("baznas_user");
+    localStorage.removeItem("baznas_typeUser");
+    localStorage.removeItem("baznas_id");
+    localStorage.removeItem("baznas_userData");
+  }
 };
 
-export const deauthUser = () => {
-	message.loading("Please wait...", 1).then(async () => {
-	try {
-        clearToken();
-        localStorage.removeItem('baznas_token');
-        localStorage.removeItem('baznas_user');
-        localStorage.removeItem('baznas_typeUser');
-        localStorage.removeItem('baznas_id');
-        localStorage.removeItem('baznas_userData');
-        window.location.replace('/login');
-    } catch (error) {
-      console.error('Logout failed:', error.message);
-    }
-	})
-}
-
+// === Cek apakah sudah login ===
 export const isAuthenticated = () => {
-  if (typeof localStorage !== 'undefined') {
+  if (isBrowser) {
     const token = localStorage.getItem("baznas_token");
     return !!token;
-  } else {
-    // Handle the case where localStorage is not available
-    return false;
-  }  
+  }
+  return false;
 };
 
-export const instance = axios.create({
-  baseURL: 'https://mahyani.amayor.id/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
+// === LOGIN ===
+export const loginUser = async (email, password) => {
+  try {
+    message.loading("Logging in...", 1);
+    const res = await instance.post("/auth/login", { email, password });
+
+    if (res.data?.token) {
+      const { token, user } = res.data;
+
+      localStorage.setItem("baznas_token", token);
+      localStorage.setItem("baznas_user", user.username);
+      localStorage.setItem("baznas_userData", JSON.stringify(user));
+      localStorage.setItem("baznas_typeUser", user.role);
+      localStorage.setItem("baznas_id", user.id);
+
+      message.success("Login berhasil!");
+      return { success: true, user };
+    } else {
+      message.error("Gagal login: Token tidak ditemukan");
+      return { success: false };
+    }
+  } catch (err) {
+    console.error("Login error:", err);
+    message.error(err.response?.data?.message || "Login gagal");
+    return { success: false };
+  }
+};
+
+// === LOGOUT ===
+export const logoutUser = async () => {
+  try {
+    message.loading("Logging out...", 1);
+    const token = getToken();
+
+    if (token) {
+      // Panggil endpoint logout backend (jika disediakan)
+      await instance.post(
+        "/auth/logout",
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    }
+
+    clearToken();
+    message.success("Logout berhasil");
+    window.location.replace("/login");
+  } catch (error) {
+    console.error("Logout failed:", error.message);
+    clearToken();
+    window.location.replace("/login");
+  }
+};
+
+// === DEAUTH LOCAL === (force logout tanpa API)
+export const deauthUser = () => {
+  message.loading("Please wait...", 1).then(() => {
+    try {
+      clearToken();
+      window.location.replace("/login");
+    } catch (error) {
+      console.error("Logout failed:", error.message);
+    }
+  });
+};
+
+// === Interceptor untuk otomatis attach token ===
+instance.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
   },
-});
+  (error) => Promise.reject(error)
+);
+
+// === Interceptor untuk auto redirect jika error 401 ===
+instance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      // Jika token invalid / belum login
+      clearToken();
+
+      // Tampilkan pesan
+      message.warning("Sesi login Anda telah berakhir. Silakan login kembali.");
+
+      // Redirect ke halaman login (hindari infinite loop)
+      if (isBrowser && window.location.pathname !== "/login") {
+        setTimeout(() => {
+          window.location.replace("/login");
+        }, 1000);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);

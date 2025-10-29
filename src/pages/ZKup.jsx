@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated, instance } from "../utils/auth";
-import { Button, Form, Input, message, Modal, Popconfirm, Select, Table, Tabs } from "antd";
+import { Button, Form, Input, message, Modal, Popconfirm, Select, Table, Tabs, Tag } from "antd";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -15,6 +15,7 @@ import ZKupCard from "../components/ZKupCard";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import TextArea from "antd/es/input/TextArea";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FileExcelOutlined } from "@ant-design/icons";
 
 // Memperbaiki ikon marker
 delete L.Icon.Default.prototype._getIconUrl;
@@ -39,14 +40,7 @@ const UpdateMapCenter = ({ position }) => {
 const { Option } = Select;
 
 function ZKup() {
-  const navigate = useNavigate();
-
-  // useEffect(() => {
-  //   if (!isAuthenticated()) {
-  //     message.error("Kamu belum login. Silahkan login terlebir dahulu!");
-  //     navigate("/login");
-  //   }
-  // }, [navigate]);
+  const user = JSON.parse(localStorage.getItem('baznas_userData'));
 
   const [loading, setLoading] = useState(false);
   const [geometry, setGeometry] = useState({ lng: '', lat: '' });
@@ -244,7 +238,7 @@ function ZKup() {
   const fetchData = async () => {
     setLoadingTable(true);
     try {
-      const response = await axios.get('https://mahyani.amayor.id/api/zkup');
+      const response = await instance.get('/zkup');
       if (response.data?.data) {
         setDataList(response.data.data);
       }
@@ -336,19 +330,59 @@ function ZKup() {
       ),
     },
     {
+      title: 'Tanggal',
+      key: 'created_at',
+      dataIndex: 'created_at',
+      render: (val) => (val ? new Date(val).toLocaleDateString("id-ID") : "-"),
+      width: 110,
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      width: 120,
+      render: (_, record) => (
+        <div className="flex">
+          <Tag
+            color={
+              record.status === 'Menunggu' ? 'yellow' :
+              record.status === 'Disetujui' ? 'green' :
+              record.status === 'Ditolak' ? 'red' :
+              'default'
+            }
+          >
+            {record.status}
+          </Tag>
+        </div>
+      ),
+    },
+    {
       title: 'Aksi',
       key: 'aksi',
+      width: 120,
       render: (_, record) => (
         <div className="flex gap-2">
-          <Button size="small" onClick={() => handleView(record)}>Lihat</Button>
-          {/* <Button size="small" type="primary" onClick={() => handleEdit(record)}>Edit</Button> */}
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => handleView(record)}
+          />
+          <Button
+            size="small"
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          />
           <Popconfirm
             title="Yakin ingin hapus data ini?"
             onConfirm={() => handleDelete(record.id)}
             okText="Ya"
             cancelText="Batal"
           >
-            <Button size="small" danger>Hapus</Button>
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+            />
           </Popconfirm>
         </div>
       ),
@@ -370,10 +404,10 @@ function ZKup() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://mahyani.amayor.id/api/zkup/${id}`);
+      await instance.delete(`/zkup/${id}`);
       message.success('Data berhasil dihapus');
       // Refresh data
-      const updated = await axios.get(`https://mahyani.amayor.id/api/zkup`);
+      const updated = await instance.get('/zkup');
       setDataList(updated.data.data);
     } catch (err) {
       message.error('Gagal menghapus data');
@@ -389,6 +423,8 @@ function ZKup() {
   const filteredData = dataList.filter(item =>
     (!filters.pengusul || item.pengusul === filters.pengusul) &&
     (!filters.kabupaten || item.kabupaten === filters.kabupaten) &&
+    (!filters.status || item.status === filters.status) &&
+    (!filters.tanggal || (item.created_at && new Date(item.created_at).getFullYear().toString() === filters.tanggal)) &&
     (
       item.nama?.toLowerCase().includes(searchText.toLowerCase()) ||
       item.nik?.toLowerCase().includes(searchText.toLowerCase())
@@ -418,11 +454,11 @@ function ZKup() {
   const handleEditSubmit = async () => {
     try {
       const updated = await editForm.validateFields();
-      await axios.put(`https://mahyani.amayor.id/api/pendataan/${editData.id}`, updated);
+      await instance.put(`/pendataan/${editData.id}`, updated);
       message.success('Data berhasil diperbarui');
       setEditModalVisible(false);
       // refresh data
-      const { data } = await axios.get('https://mahyani.amayor.id/api/pendataan');
+      const { data } = await instance.get('/pendataan');
       setDataList(data.data);
     } catch (err) {
       message.error('Gagal memperbarui data');
@@ -442,337 +478,88 @@ function ZKup() {
   const items = [
     {
       key: '1',
-      label: 'Tambah Data',
-      children: (
-        <div className="lg:px-20 lg:py-20 px-4 bg-white rounded-lg">
-          <Form
-            form={form}
-            name="addDataForm"
-            onFinish={onFinish}
-            onFinishFailed={onFinishFailed}
-            layout="vertical"
-            size="large"
-          >
-            <Form.Item
-              label="Pengusul"
-              name="pengusul"
-              rules={[{ required: true, message: 'Pengusul harus diisi' }]}
-            >
-              <Select
-                className="w-full"
-                // onChange={handleChange}
-                placeholder="Pilih pengusul"
-                options={[
-                  {
-                    value: 'BAZNAS Prov NTB',
-                    label: 'BAZNAS Prov NTB',
-                  },
-                  {
-                    value: 'BAZNAS Mataram',
-                    label: 'BAZNAS Mataram',
-                  },
-                  {
-                    value: 'BAZNAS Lombok Barat',
-                    label: 'BAZNAS Lombok Barat',
-                  },
-                  {
-                    value: 'BAZNAS Lombok Utara',
-                    label: 'BAZNAS Lombok Utara',
-                  },
-                  {
-                    value: 'BAZNAS Lombok Tengah',
-                    label: 'BAZNAS Lombok Tengah',
-                  },
-                  {
-                    value: 'BAZNAS Lombok Timur',
-                    label: 'BAZNAS Lombok Timur',
-                  },
-                  {
-                    value: 'BAZNAS Sumbawa',
-                    label: 'BAZNAS Sumbawa',
-                  },
-                  {
-                    value: 'BAZNAS Sumbawa Barat',
-                    label: 'BAZNAS Sumbawa Barat',
-                  },
-                  {
-                    value: 'BAZNAS Dompu',
-                    label: 'BAZNAS Dompu',
-                  },
-                  {
-                    value: 'BAZNAS Bima',
-                    label: 'BAZNAS Bima',
-                  },
-                  {
-                    value: 'BAZNAS Kota Bima',
-                    label: 'BAZNAS Kota Bima',
-                  },
-                  {
-                    value: 'Lainnya',
-                    label: 'Lainnya',
-                  },
-                ]}
-              />
-            </Form.Item>
-
-            <div className="flex gap-4 w-full">
-              <Form.Item
-                label="Nama"
-                name="nama"
-                rules={[{ required: true, message: 'Nama harus diisi' }]}
-                className="flex-grow"
-              >
-                <Input className="w-full" />
-              </Form.Item>
-
-              <Form.Item
-                label="NIK"
-                name="nik"
-                rules={[{ required: true, message: 'NIK harus diisi' }]}
-                className="flex-grow"
-              >
-                <Input className="w-full" />
-              </Form.Item>
-            </div>
-
-            <div className="flex gap-4 w-full">
-              <Form.Item
-                label="Jumlah Keluarga"
-                name="jumlahKeluarga"
-                rules={[{ required: true, message: 'Jumlah Keluarga harus diisi' }]}
-                className="flex-grow"
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="Telepon"
-                name="telepon"
-                rules={[{ required: true, message: 'Telepon harus diisi' }]}
-                className="flex-grow"
-              >
-                <Input />
-              </Form.Item>
-            </div>
-
-            <div className="flex flex-col w-full">
-              {/* Baris 1: Provinsi & Kabupaten/Kota */}
-              <div className="flex flex-col md:flex-row gap-4 w-full">
-                <div className="flex-1">
-                  <Form.Item
-                    label="Provinsi"
-                    name="province"
-                    rules={[{ required: true, message: 'Provinsi harus dipilih' }]}
-                  >
-                    <Select onChange={handleProvinceChange} placeholder="Pilih Provinsi">
-                      {provinces.map(province => (
-                        <Option key={province.id} value={province.id}>
-                          {province.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </div>
-
-                <div className="flex-1">
-                  <Form.Item
-                    label="Kabupaten/Kota"
-                    name="regency"
-                    rules={[{ required: true, message: 'Kabupaten/Kota harus dipilih' }]}
-                  >
-                    <Select
-                      onChange={handleRegencyChange}
-                      placeholder="Pilih Kabupaten/Kota"
-                      disabled={!selectedProvince}
-                    >
-                      {regencies.map(regency => (
-                        <Option key={regency.id} value={regency.id}>
-                          {regency.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </div>
-              </div>
-
-              {/* Baris 2: Kecamatan & Desa/Kelurahan */}
-              <div className="flex flex-col md:flex-row gap-4 w-full">
-                <div className="flex-1">
-                  <Form.Item
-                    label="Kecamatan"
-                    name="district"
-                    rules={[{ required: true, message: 'Kecamatan harus dipilih' }]}
-                  >
-                    <Select
-                      onChange={handleDistrictChange}
-                      placeholder="Pilih Kecamatan"
-                      disabled={!selectedRegency}
-                    >
-                      {districts.map(district => (
-                        <Option key={district.id} value={district.id}>
-                          {district.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </div>
-
-                <div className="flex-1">
-                  <Form.Item
-                    label="Desa/Kelurahan"
-                    name="village"
-                    rules={[{ required: true, message: 'Desa/Kelurahan harus dipilih' }]}
-                  >
-                    <Select
-                      placeholder="Pilih Desa/Kelurahan"
-                      disabled={!selectedDistrict}
-                    >
-                      {villages.map(village => (
-                        <Option key={village.id} value={village.id}>
-                          {village.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </div>
-              </div>
-            </div>
-
-            <Form.Item
-              label="Input Kordinat (Klik Gunakan Lokasi Saat Ini atau Anda Juga Bisa Menentukan Titik Sendiri di Map)"
-              name="position"
-            >
-              <div className="mb-4">
-                <Button className="bg-green-600 text-white" onClick={handleUseCurrentLocation}>Gunakan Lokasi Saat Ini</Button>
-              </div>
-              <div>
-                <MapContainer center={position} zoom={13} style={{ height: '60vh', width: '100%' }}>
-                  <UpdateMapCenter position={position} />
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  />
-                  <Marker
-                    position={position}
-                    draggable={true}
-                    eventHandlers={{
-                      dragend(event) {
-                        setPosition(event.target.getLatLng());
-                      },
-                    }}
-                  >
-                    <Popup>
-                      <div>
-                        <p>Latitude: {position.lat.toFixed(4)}</p>
-                        <p>Longitude: {position.lng.toFixed(4)}</p>
-                        <Button className="bg-green-600 text-white" onClick={handleSave}>Simpan Titik</Button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                </MapContainer>
-              </div>
-            </Form.Item>
-            <div className="text-gray-400 text-xs -mt-4 mb-6">
-              {position.lat && position.lng && (
-                <p>({position.lat}, {position.lng})</p>
-              )}
-              {/* <p>{geometry}</p> */}
-            </div>
-
-            <Form.Item
-              label="Jenis Usaha"
-              name="jenisUsaha"
-              rules={[{ required: true, message: 'Jenis usaha harus diisi' }]}
-            >
-              <Input className="w-full" placeholder="Contoh: Warung Kelontong, Pertanian, Perternakan" />
-            </Form.Item>
-
-            <Form.Item
-              label="Lokasi Usaha"
-              name="lokasiUsaha"
-              rules={[{ required: true, message: 'Lokasi usaha harus diisi' }]}
-            >
-              <TextArea className="w-full" placeholder="Alamat lengkap lokasi usaha" />
-            </Form.Item>
-
-            <Form.Item
-              label="Periode"
-              name="periode"
-              rules={[{ required: false, message: 'Periode harus diisi' }]}
-            >
-              <Input className="w-full" placeholder="Periode" />
-            </Form.Item>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-              <div>
-                <Form.Item
-                  label="Foto Usaha"
-                  name="fotoUsaha"
-                  rules={[{ required: true, message: 'Foto usaha depan diunggah' }]}
-                >
-                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'depan')} />
-                </Form.Item>
-                {imageUrlDepan && <img src={imageUrlDepan} alt="Usaha" className="mt-2 w-full h-32 object-cover rounded" />}
-              </div>
-            </div>
-
-            <Form.Item
-              label="Longitude"
-              name="lng"
-              initialValue={geometry.lng}
-              hidden
-            >
-              <Input disabled />
-            </Form.Item>
-
-            <Form.Item
-              label="Latitude"
-              name="lat"
-              initialValue={geometry.lat}
-              hidden
-            >
-              <Input disabled />
-            </Form.Item>
-
-            <Form.Item>
-              <Button className="bg-green-600 text-white mt-4 px-10" htmlType="submit" loading={loading} disabled={!imageUrlDepan || !geometry}>
-                Kirim
-              </Button>
-            </Form.Item>
-          </Form>
-        </div>
-      ),
-    },
-    {
-      key: '2',
       label: 'Data ZKup',
       children: (
         <div className="bg-white p-4 rounded-lg">
-          <div className="lg:flex hidden gap-4 mb-4">
-            <Input
-              placeholder="Cari Nama atau NIK"
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{ width: 250 }}
-            />
-            <Select
-              placeholder="Filter Pengusul"
-              allowClear
-              onChange={(val) => setFilters(prev => ({ ...prev, pengusul: val }))}
-              options={[...new Set(dataList.map(d => d.pengusul))].map(i => ({ label: i, value: i }))}
-              style={{ minWidth: 200 }}
-            />
-            <Select
-              placeholder="Filter Kabupaten"
-              allowClear
-              onChange={(val) => setFilters(prev => ({ ...prev, kabupaten: val }))}
-              options={[...new Set(dataList.map(d => d.kabupaten))].map(i => ({
-                label: getNameById(i, geoData.regencies),
-                value: i
-              }))}
-              style={{ minWidth: 400 }}
-            />
-            <Button className="bg-green-700 text-white" onClick={exportToExcel}>Export ke Excel</Button>
+          <div className="lg:flex hidden justify-between gap-4 mb-4">
+            <div className="flex gap-2">
+              {/* 🔍 Pencarian Nama atau NIK */}
+              <Input
+                placeholder="Cari Nama atau NIK"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: 250 }}
+              />
+
+              {/* 🧩 Filter Pengusul */}
+              <Select
+                placeholder="Filter Pengusul"
+                allowClear
+                onChange={(val) => setFilters((prev) => ({ ...prev, pengusul: val }))}
+                options={[...new Set(dataList.map((d) => d.pengusul))].map((i) => ({
+                  label: i,
+                  value: i,
+                }))}
+                style={{ minWidth: 200 }}
+              />
+
+              {/* 🏛️ Filter Kabupaten */}
+              <Select
+                placeholder="Filter Kabupaten"
+                allowClear
+                onChange={(val) => setFilters((prev) => ({ ...prev, kabupaten: val }))}
+                options={[...new Set(dataList.map((d) => d.kabupaten))].map((i) => ({
+                  label: getNameById(i, geoData.regencies),
+                  value: i,
+                }))}
+                style={{ minWidth: 250 }}
+              />
+
+              {/* 📅 Filter Tahun berdasarkan created_at */}
+              <Select
+                placeholder="Filter Tahun"
+                allowClear
+                onChange={(val) => setFilters((prev) => ({ ...prev, tahun: val }))}
+                options={[
+                  ...new Set(
+                    dataList
+                      .map((d) => {
+                        if (!d.created_at) return null;
+                        const year = new Date(d.created_at).getFullYear();
+                        return !isNaN(year) ? year : null;
+                      })
+                      .filter(Boolean)
+                  ),
+                ]
+                  .sort((a, b) => b - a)
+                  .map((year) => ({ label: year, value: year }))}
+                style={{ minWidth: 110 }}
+              />
+
+              {/* 🎨 Filter Status */}
+              <Select
+                placeholder="Filter Status"
+                allowClear
+                onChange={(val) => setFilters((prev) => ({ ...prev, status: val }))}
+                options={[
+                  { label: "Menunggu", value: "Menunggu" },
+                  { label: "Disetujui", value: "Disetujui" },
+                  { label: "Ditolak", value: "Ditolak" },
+                ]}
+                style={{ minWidth: 150 }}
+              />
+            </div>
+
+            <div>
+              {/* 📄 Export */}
+              <Button
+                className="bg-green-700 text-white"
+                onClick={exportToExcel}
+                icon={<FileExcelOutlined />}
+              >
+                Export ke Excel
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -801,7 +588,7 @@ function ZKup() {
               >
                 <Select
                   className="w-full"
-                  // onChange={handleChange}
+                  disabled={user.role !== 'admin'} // nonaktifkan jika bukan admin
                   placeholder="Pilih pengusul"
                   options={[
                     {
@@ -1150,10 +937,315 @@ function ZKup() {
         </div>
       ),
     },
+    {
+      key: '2',
+      label: 'Tambah Data',
+      children: (
+        <div className="lg:px-20 lg:py-20 px-4 bg-white rounded-lg">
+          <Form
+            form={form}
+            name="addDataForm"
+            onFinish={onFinish}
+            onFinishFailed={onFinishFailed}
+            layout="vertical"
+            size="large"
+          >
+            <Form.Item
+              label="Pengusul"
+              name="pengusul"
+              rules={[{ required: true, message: 'Pengusul harus diisi' }]}
+              initialValue={user.role !== 'admin' ? user.pengusul : undefined}
+            >
+              <Select
+                className="w-full"
+                disabled={user.role !== 'admin'} // nonaktifkan jika bukan admin
+                placeholder="Pilih pengusul"
+                options={[
+                  {
+                    value: 'BAZNAS Prov NTB',
+                    label: 'BAZNAS Prov NTB',
+                  },
+                  {
+                    value: 'BAZNAS Mataram',
+                    label: 'BAZNAS Mataram',
+                  },
+                  {
+                    value: 'BAZNAS Lombok Barat',
+                    label: 'BAZNAS Lombok Barat',
+                  },
+                  {
+                    value: 'BAZNAS Lombok Utara',
+                    label: 'BAZNAS Lombok Utara',
+                  },
+                  {
+                    value: 'BAZNAS Lombok Tengah',
+                    label: 'BAZNAS Lombok Tengah',
+                  },
+                  {
+                    value: 'BAZNAS Lombok Timur',
+                    label: 'BAZNAS Lombok Timur',
+                  },
+                  {
+                    value: 'BAZNAS Sumbawa',
+                    label: 'BAZNAS Sumbawa',
+                  },
+                  {
+                    value: 'BAZNAS Sumbawa Barat',
+                    label: 'BAZNAS Sumbawa Barat',
+                  },
+                  {
+                    value: 'BAZNAS Dompu',
+                    label: 'BAZNAS Dompu',
+                  },
+                  {
+                    value: 'BAZNAS Bima',
+                    label: 'BAZNAS Bima',
+                  },
+                  {
+                    value: 'BAZNAS Kota Bima',
+                    label: 'BAZNAS Kota Bima',
+                  },
+                  {
+                    value: 'Lainnya',
+                    label: 'Lainnya',
+                  },
+                ]}
+              />
+            </Form.Item>
+
+            <div className="flex gap-4 w-full">
+              <Form.Item
+                label="Nama"
+                name="nama"
+                rules={[{ required: true, message: 'Nama harus diisi' }]}
+                className="flex-grow"
+              >
+                <Input className="w-full" />
+              </Form.Item>
+
+              <Form.Item
+                label="NIK"
+                name="nik"
+                rules={[{ required: true, message: 'NIK harus diisi' }]}
+                className="flex-grow"
+              >
+                <Input className="w-full" />
+              </Form.Item>
+            </div>
+
+            <div className="flex gap-4 w-full">
+              <Form.Item
+                label="Jumlah Keluarga"
+                name="jumlahKeluarga"
+                rules={[{ required: true, message: 'Jumlah Keluarga harus diisi' }]}
+                className="flex-grow"
+              >
+                <Input />
+              </Form.Item>
+
+              <Form.Item
+                label="Telepon"
+                name="telepon"
+                rules={[{ required: true, message: 'Telepon harus diisi' }]}
+                className="flex-grow"
+              >
+                <Input />
+              </Form.Item>
+            </div>
+
+            <div className="flex flex-col w-full">
+              {/* Baris 1: Provinsi & Kabupaten/Kota */}
+              <div className="flex flex-col md:flex-row gap-4 w-full">
+                <div className="flex-1">
+                  <Form.Item
+                    label="Provinsi"
+                    name="province"
+                    rules={[{ required: true, message: 'Provinsi harus dipilih' }]}
+                  >
+                    <Select onChange={handleProvinceChange} placeholder="Pilih Provinsi">
+                      {provinces.map(province => (
+                        <Option key={province.id} value={province.id}>
+                          {province.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </div>
+
+                <div className="flex-1">
+                  <Form.Item
+                    label="Kabupaten/Kota"
+                    name="regency"
+                    rules={[{ required: true, message: 'Kabupaten/Kota harus dipilih' }]}
+                  >
+                    <Select
+                      onChange={handleRegencyChange}
+                      placeholder="Pilih Kabupaten/Kota"
+                      disabled={!selectedProvince}
+                    >
+                      {regencies.map(regency => (
+                        <Option key={regency.id} value={regency.id}>
+                          {regency.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </div>
+              </div>
+
+              {/* Baris 2: Kecamatan & Desa/Kelurahan */}
+              <div className="flex flex-col md:flex-row gap-4 w-full">
+                <div className="flex-1">
+                  <Form.Item
+                    label="Kecamatan"
+                    name="district"
+                    rules={[{ required: true, message: 'Kecamatan harus dipilih' }]}
+                  >
+                    <Select
+                      onChange={handleDistrictChange}
+                      placeholder="Pilih Kecamatan"
+                      disabled={!selectedRegency}
+                    >
+                      {districts.map(district => (
+                        <Option key={district.id} value={district.id}>
+                          {district.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </div>
+
+                <div className="flex-1">
+                  <Form.Item
+                    label="Desa/Kelurahan"
+                    name="village"
+                    rules={[{ required: true, message: 'Desa/Kelurahan harus dipilih' }]}
+                  >
+                    <Select
+                      placeholder="Pilih Desa/Kelurahan"
+                      disabled={!selectedDistrict}
+                    >
+                      {villages.map(village => (
+                        <Option key={village.id} value={village.id}>
+                          {village.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </div>
+              </div>
+            </div>
+
+            <Form.Item
+              label="Input Kordinat (Klik Gunakan Lokasi Saat Ini atau Anda Juga Bisa Menentukan Titik Sendiri di Map)"
+              name="position"
+            >
+              <div className="mb-4">
+                <Button className="bg-green-600 text-white" onClick={handleUseCurrentLocation}>Gunakan Lokasi Saat Ini</Button>
+              </div>
+              <div>
+                <MapContainer center={position} zoom={13} style={{ height: '60vh', width: '100%' }}>
+                  <UpdateMapCenter position={position} />
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <Marker
+                    position={position}
+                    draggable={true}
+                    eventHandlers={{
+                      dragend(event) {
+                        setPosition(event.target.getLatLng());
+                      },
+                    }}
+                  >
+                    <Popup>
+                      <div>
+                        <p>Latitude: {position.lat.toFixed(4)}</p>
+                        <p>Longitude: {position.lng.toFixed(4)}</p>
+                        <Button className="bg-green-600 text-white" onClick={handleSave}>Simpan Titik</Button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
+            </Form.Item>
+            <div className="text-gray-400 text-xs -mt-4 mb-6">
+              {position.lat && position.lng && (
+                <p>({position.lat}, {position.lng})</p>
+              )}
+              {/* <p>{geometry}</p> */}
+            </div>
+
+            <Form.Item
+              label="Jenis Usaha"
+              name="jenisUsaha"
+              rules={[{ required: true, message: 'Jenis usaha harus diisi' }]}
+            >
+              <Input className="w-full" placeholder="Contoh: Warung Kelontong, Pertanian, Perternakan" />
+            </Form.Item>
+
+            <Form.Item
+              label="Lokasi Usaha"
+              name="lokasiUsaha"
+              rules={[{ required: true, message: 'Lokasi usaha harus diisi' }]}
+            >
+              <TextArea className="w-full" placeholder="Alamat lengkap lokasi usaha" />
+            </Form.Item>
+
+            <Form.Item
+              label="Periode"
+              name="periode"
+              rules={[{ required: false, message: 'Periode harus diisi' }]}
+            >
+              <Input className="w-full" placeholder="Periode" />
+            </Form.Item>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+              <div>
+                <Form.Item
+                  label="Foto Usaha"
+                  name="fotoUsaha"
+                  rules={[{ required: true, message: 'Foto usaha depan diunggah' }]}
+                >
+                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'depan')} />
+                </Form.Item>
+                {imageUrlDepan && <img src={imageUrlDepan} alt="Usaha" className="mt-2 w-full h-32 object-cover rounded" />}
+              </div>
+            </div>
+
+            <Form.Item
+              label="Longitude"
+              name="lng"
+              initialValue={geometry.lng}
+              hidden
+            >
+              <Input disabled />
+            </Form.Item>
+
+            <Form.Item
+              label="Latitude"
+              name="lat"
+              initialValue={geometry.lat}
+              hidden
+            >
+              <Input disabled />
+            </Form.Item>
+
+            <Form.Item>
+              <Button className="bg-green-600 text-white mt-4 px-10" htmlType="submit" loading={loading} disabled={!imageUrlDepan || !geometry}>
+                Kirim
+              </Button>
+            </Form.Item>
+          </Form>
+        </div>
+      ),
+    },
   ];
   return (
     <>
-      <section id="input-lokasi" className="text-gray-600 py-10 lg:px-40 px-4 mb-10 bg-gray-100">
+      <section id="input-lokasi" className="text-gray-600 py-10 lg:px-32 px-4 mb-10 bg-gray-100">
+        <h2 className="font-semibold text-2xl text-gray-700 mb-6">ZKup</h2>
         <Tabs defaultActiveKey="1" items={items} onChange={onChange} />
       </section>
     </>
