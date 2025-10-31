@@ -54,25 +54,45 @@ const DetailModal = ({ visible, onClose, record, loading }) => {
 
             {/* Kolom kanan */}
             <Col xs={24} md={12}>
-              <p><strong>Kondisi Rumah:</strong> <Tag color="orange">{record.kondisi_rumah}</Tag></p>
-              <p><strong>Status Kepemilikan:</strong> <Tag color="blue">{record.status_kepemilikan}</Tag></p>
-              <p>
-                <strong>Akses Air Bersih:</strong> 
-                <Tag color={
-                  record.akses_air_bersih === 'Menunggu' ? 'yellow' :
-                  record.akses_air_bersih === 'Disetujui' ? 'green' :
-                  record.akses_air_bersih === 'Ditolak' ? 'red' : 'default'
-                }>
-                  {record.akses_air_bersih}
-                </Tag>
-              </p>
-              <p>
-                <strong>Ketersediaan MCK:</strong> 
-                <Tag color={record.ketersediaan_mck === 'Ada' ? 'green' : 'red'}>
-                  {record.ketersediaan_mck}
-                </Tag>
-              </p>
-              <p><strong>Tahun Realisasi:</strong> {record.tahun_realisasi || '-'}</p>
+              {record.sumber === "pendataan" ? (
+                <>
+                  <p><strong>Kondisi Rumah:</strong> <Tag color="orange">{record.kondisi_rumah}</Tag></p>
+                  <p><strong>Status Kepemilikan:</strong> <Tag color="blue">{record.status_kepemilikan}</Tag></p>
+                  <p>
+                    <strong>Akses Air Bersih:</strong>{" "}
+                    <Tag
+                      color={
+                        record.akses_air_bersih === "Menunggu"
+                          ? "yellow"
+                          : record.akses_air_bersih === "Disetujui"
+                          ? "green"
+                          : record.akses_air_bersih === "Ditolak"
+                          ? "red"
+                          : "default"
+                      }
+                    >
+                      {record.akses_air_bersih}
+                    </Tag>
+                  </p>
+                  <p>
+                    <strong>Ketersediaan MCK:</strong>{" "}
+                    <Tag color={record.ketersediaan_mck === "Ada" ? "green" : "red"}>
+                      {record.ketersediaan_mck}
+                    </Tag>
+                  </p>
+                  <p>
+                    <strong>Tahun Realisasi:</strong> {record.tahun_realisasi || "-"}
+                  </p>
+                </>
+              ) : record.sumber === "zkup" ? (
+                <>
+                  <p><strong>Jenis Usaha:</strong> {record.jenis_usaha || "-"}</p>
+                  <p><strong>Lokasi Usaha:</strong> {record.lokasi_usaha || "-"}</p>
+                  <p><strong>Periode:</strong> {record.periode || "-"}</p>
+                </>
+              ) : (
+                <p className="text-gray-400 italic">Sumber data tidak dikenal</p>
+              )}
             </Col>
           </Row>
 
