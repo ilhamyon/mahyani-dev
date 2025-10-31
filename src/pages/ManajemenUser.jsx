@@ -100,6 +100,11 @@ function ManajemenUser() {
       key: "email",
     },
     {
+      title: "Pengusul",
+      dataIndex: "pengusul",
+      key: "pengusul",
+    },
+    {
       title: "Role",
       dataIndex: "role",
       key: "role",
@@ -251,6 +256,27 @@ function ManajemenUser() {
                   }
                   prefix={<LockOutlined />}
                 />
+              </Form.Item>
+
+              <Form.Item
+                name="pengusul"
+                label="Pengusul"
+                rules={[{ required: true, message: "Pengusul wajib diisi" }]}
+              >
+                <Select placeholder="Pilih pengusul">
+                  <Option value="BAZNAS Prov NTB">BAZNAS Prov NTB</Option>
+                  <Option value="BAZNAS Mataram">BAZNAS Mataram</Option>
+                  <Option value="BAZNAS Lombok Barat">BAZNAS Lombok Barat</Option>
+                  <Option value="BAZNAS Lombok Utara">BAZNAS Lombok Utara</Option>
+                  <Option value="BAZNAS Lombok Tengah">BAZNAS Lombok Tengah</Option>
+                  <Option value="BAZNAS Lombok Timur">BAZNAS Lombok Timur</Option>
+                  <Option value="BAZNAS Sumbawa">BAZNAS Sumbawa</Option>
+                  <Option value="BAZNAS Sumbawa Barat">BAZNAS Sumbawa Barat</Option>
+                  <Option value="BAZNAS Dompu">BAZNAS Dompu</Option>
+                  <Option value="BAZNAS Bima">BAZNAS Bima</Option>
+                  <Option value="BAZNAS Kota Bima">BAZNAS Kota Bima</Option>
+                  <Option value="Lainnya">Lainnya</Option>
+                </Select>
               </Form.Item>
 
               <Form.Item
