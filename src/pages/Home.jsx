@@ -40,7 +40,7 @@ const { Option } = Select;
 
 function Home() {
   const [loading, setLoading] = useState(false);
-  const [geometry, setGeometry] = useState({ lng: '', lat: '' });
+  // const [geometry, setGeometry] = useState({ lng: '', lat: '' });
   const user = JSON.parse(localStorage.getItem('baznas_userData'));
   
   // State untuk 3 gambar
@@ -169,7 +169,9 @@ function Home() {
   //   setAlamat(e.target.value);
   // };
 
+  const [geometry, setGeometry] = useState({ lng: '', lat: '' });
   const [position, setPosition] = useState({ lat: -8.692290, lng: 116.183420 });
+
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -188,18 +190,18 @@ function Home() {
     }
   };
 
-  const [selectedProvince, setSelectedProvince] = useState("52"); // Default ke 52
-  const [selectedRegency, setSelectedRegency] = useState(null); // Default ke 5202
+  const [selectedProvince, setSelectedProvince] = useState("52");
+  const [selectedRegency, setSelectedRegency] = useState(null);
   const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedVillage, setSelectedVillage] = useState(null);
+
   const [provinces, setProvinces] = useState([]);
   const [villages, setVillages] = useState([]);
-  // eslint-disable-next-line no-unused-vars
   const [regencies, setRegencies] = useState([]);
   const [districts, setDistricts] = useState([]);
 
-  // Fetch regencies saat komponen dimuat
+  // Load provinces
   useEffect(() => {
-    // Fetch provinces and filter for Nusa Tenggara Barat (ID = 17)
     axios.get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json')
       .then(response => {
         const ntbProvince = response.data.find(province => province.id === '52');
@@ -215,53 +217,83 @@ function Home() {
       });
   }, []);
 
-  // eslint-disable-next-line no-unused-vars
   const handleProvinceChange = (value) => {
     setSelectedProvince(value);
     setSelectedRegency(null);
     setSelectedDistrict(null);
+    setSelectedVillage(null);
     setVillages([]);
 
-    // Fetch regencies for the selected province
     axios.get(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${value}.json`)
-      .then(response => {
-        setRegencies(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching regencies:', error);
-        message.error('Gagal memuat kabupaten/kota');
-      });
+      .then(response => setRegencies(response.data))
+      .catch(() => message.error('Gagal memuat kabupaten/kota'));
   };
 
-  // eslint-disable-next-line no-unused-vars
   const handleRegencyChange = (value) => {
+    console.log('Selected regency ID:', value);
     setSelectedRegency(value);
     setSelectedDistrict(null);
+    setSelectedVillage(null);
     setVillages([]);
 
-    // Fetch districts for the selected regency
     axios.get(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${value}.json`)
-      .then(response => {
-        setDistricts(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching districts:', error);
-        message.error('Gagal memuat kecamatan');
-      });
+      .then(response => setDistricts(response.data))
+      .catch(() => message.error('Gagal memuat kecamatan'));
   };
 
   const handleDistrictChange = (value) => {
     setSelectedDistrict(value);
 
-    // Fetch villages for the selected district
     axios.get(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${value}.json`)
-      .then(response => {
-        setVillages(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching villages:', error);
-        message.error('Gagal memuat desa/kelurahan');
-      });
+      .then(response => setVillages(response.data))
+      .catch(() => message.error('Gagal memuat desa/kelurahan'));
+  };
+
+  // Mapping nama kemendagri -> nama OSM
+  const regencyToOSM = {
+    "Lombok Tengah": "Central Lombok",
+    "Lombok Barat": "West Lombok",
+    "Lombok Timur": "East Lombok",
+    "Lombok Utara": "North Lombok",
+    "Kota Mataram": "Mataram"
+  };
+
+  const handleVillageChange = async (value) => {
+    setSelectedVillage(value);
+
+    const villageName = villages.find(v => v.id === value)?.name;
+    const regencyName = regencies.find(r => r.id === selectedRegency)?.name;
+
+    if (!villageName || !regencyName) return;
+
+    // Convert nama kabupaten agar sesuai format OSM
+    const osmRegency = regencyToOSM[regencyName] || regencyName;
+
+    const query = `${villageName}, ${osmRegency}, West Nusa Tenggara, Lesser Sunda Islands, Indonesia`;
+
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=json&q=` +
+      encodeURIComponent(query);
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+
+        setPosition({ lat, lng });
+        setGeometry({ lat, lng });
+
+        message.success(`Map otomatis pindah ke ${villageName}`);
+      } else {
+        message.error("Koordinat desa tidak ditemukan");
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("Gagal mencari koordinat desa");
+    }
   };
 
   const handleSave = () => {
@@ -274,7 +306,7 @@ function Home() {
 
   const [dataList, setDataList] = useState([]);
   const [loadingTable, setLoadingTable] = useState(false);
-    const [geoData, setGeoData] = useState({
+  const [geoData, setGeoData] = useState({
     provinces: [],
     regencies: [],
     districts: [],
@@ -912,6 +944,7 @@ function Home() {
                       <Select
                         placeholder="Pilih Desa/Kelurahan"
                         disabled={!selectedDistrict}
+                        onChange={handleVillageChange}
                       >
                         {villages.map(village => (
                           <Option key={village.id} value={village.id}>
@@ -1351,6 +1384,7 @@ function Home() {
                     <Select
                       placeholder="Pilih Desa/Kelurahan"
                       disabled={!selectedDistrict}
+                      onChange={handleVillageChange}
                     >
                       {villages.map(village => (
                         <Option key={village.id} value={village.id}>
