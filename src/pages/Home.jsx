@@ -251,11 +251,16 @@ function Home() {
 
   // Mapping nama kemendagri -> nama OSM
   const regencyToOSM = {
-    "Lombok Tengah": "Central Lombok",
-    "Lombok Barat": "West Lombok",
-    "Lombok Timur": "East Lombok",
-    "Lombok Utara": "North Lombok",
-    "Kota Mataram": "Mataram"
+    "KABUPATEN LOMBOK TENGAH": "Lombok Tengah",
+    "KABUPATEN LOMBOK BARAT": "Lombok Barat",
+    "KABUPATEN LOMBOK TIMUR": "Lombok Timur",
+    "KABUPATEN LOMBOK UTARA": "Lombok Utara",
+    "KOTA MATARAM": "Mataram",
+    "KABUPATEN SUMBAWA": "Sumbawa",
+    "KOTA BIMA": "Bima",
+    "KABUPATEN BIMA": "Bima",
+    "KABUPATEN DOMPU": "Dompu",
+    "KABUPATEN SUMBAWA BARAT": "Sumbawa Barat"
   };
 
   const handleVillageChange = async (value) => {
@@ -263,21 +268,34 @@ function Home() {
 
     const villageName = villages.find(v => v.id === value)?.name;
     const regencyName = regencies.find(r => r.id === selectedRegency)?.name;
+    const districtName = districts.find(d => d.id === selectedDistrict)?.name;
 
-    if (!villageName || !regencyName) return;
+    if (!villageName || !regencyName || !districtName) return;
 
     // Convert nama kabupaten agar sesuai format OSM
     const osmRegency = regencyToOSM[regencyName] || regencyName;
+    console.log('OSM Regency:', regencyName);
 
-    const query = `${villageName}, ${osmRegency}, West Nusa Tenggara, Lesser Sunda Islands, Indonesia`;
+    // 1️⃣ Format pencarian desa
+    const villageQuery =
+      `${villageName}, ${osmRegency}, West Nusa Tenggara, Lesser Sunda Islands, Indonesia`;
 
-    const url =
-      `https://nominatim.openstreetmap.org/search?format=json&q=` +
-      encodeURIComponent(query);
+    // 2️⃣ Fallback format pencarian kecamatan
+    const districtQuery =
+      `${districtName}, ${osmRegency}, West Nusa Tenggara, Lesser Sunda Islands, Indonesia`;
+
+    const search = async (query) => {
+      const url =
+        `https://nominatim.openstreetmap.org/search?format=json&q=` +
+        encodeURIComponent(query);
+
+      const res = await fetch(url);
+      return res.json();
+    };
 
     try {
-      const res = await fetch(url);
-      const data = await res.json();
+      // ▶ Cari desa dulu
+      let data = await search(villageQuery);
 
       if (data.length > 0) {
         const lat = parseFloat(data[0].lat);
@@ -287,12 +305,28 @@ function Home() {
         setGeometry({ lat, lng });
 
         message.success(`Map otomatis pindah ke ${villageName}`);
-      } else {
-        message.error("Koordinat desa tidak ditemukan");
+        return;
       }
+
+      // ▶ Desa tidak ditemukan → coba kecamatan
+      data = await search(districtQuery);
+
+      if (data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+
+        setPosition({ lat, lng });
+        setGeometry({ lat, lng });
+
+        message.warning(`Desa tidak ditemukan. Map pindah ke kecamatan ${districtName}`);
+        return;
+      }
+
+      // ▶ Jika desa & kecamatan sama-sama tidak ditemukan
+      message.error("Lokasi tidak ditemukan pada desa maupun kecamatan.");
     } catch (err) {
       console.error(err);
-      message.error("Gagal mencari koordinat desa");
+      message.error("Gagal mencari koordinat desa/kecamatan");
     }
   };
 
