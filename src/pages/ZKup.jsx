@@ -536,13 +536,62 @@ function ZKup() {
   };
 
   const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(dataList);
+    const formattedData = dataList.map((item, index) => {
+      return {
+        "No": index + 1,
+        "Nama": item.nama,
+        "NIK": item.nik,
+        "Pengusul": item.pengusul,
+        "Jumlah Keluarga": item.jumlah_keluarga,
+        "Telepon": item.telepon,
+        "Kabupaten": getNameById(item.kabupaten, geoData.regencies),
+        "Kecamatan": getNameById(item.kecamatan, geoData.districts),
+        "Desa": getNameById(item.desa, geoData.villages),
+        "Jenis Usaha": item.jenis_usaha,
+        "Lokasi Usaha": item.lokasi_usaha,
+        "Periode": item.periode,
+        "Status": item.status,
+        "Tanggal": item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "-",
+        "Foto Usaha": item.foto_usaha ? "Lihat Foto" : "-", // Kolom O
+        "Latitude": item.latitude,
+        "Longitude": item.longitude,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+
+    dataList.forEach((item, index) => {
+      const rowIndex = index + 2; // Baris 1 Header, baris 2 data
+      const colLetter = 'O'; // Kolom Foto Usaha adalah kolom ke-15 (O)
+      const cellAddress = `${colLetter}${rowIndex}`;
+
+      if (item.foto_usaha) {
+        worksheet[cellAddress].l = {
+          Target: item.foto_usaha,
+          Tooltip: "Klik untuk melihat foto usaha"
+        };
+        // Styling hyperlink
+        if(!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        worksheet[cellAddress].s = {
+          font: { color: { rgb: "0000FF" }, underline: true },
+          alignment: { horizontal: "center" }
+        };
+      }
+    });
+
+    const wscols = [
+      {wch: 5}, {wch: 20}, {wch: 20}, {wch: 20}, {wch: 15}, {wch: 15},
+      {wch: 20}, {wch: 20}, {wch: 20}, {wch: 25}, {wch: 30}, {wch: 15},
+      {wch: 12}, {wch: 12}, {wch: 15}, {wch: 15}, {wch: 15}
+    ];
+    worksheet['!cols'] = wscols;
+
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'ZKup');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data ZKup');
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(data, 'data-zkup.xlsx');
+    saveAs(data, `Data-ZKup-${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const items = [

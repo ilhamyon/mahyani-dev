@@ -272,15 +272,12 @@ function Home() {
 
     if (!villageName || !regencyName || !districtName) return;
 
-    // Convert nama kabupaten agar sesuai format OSM
     const osmRegency = regencyToOSM[regencyName] || regencyName;
     console.log('OSM Regency:', regencyName);
 
-    // 1️⃣ Format pencarian desa
     const villageQuery =
       `${villageName}, ${osmRegency}, West Nusa Tenggara, Lesser Sunda Islands, Indonesia`;
 
-    // 2️⃣ Fallback format pencarian kecamatan
     const districtQuery =
       `${districtName}, ${osmRegency}, West Nusa Tenggara, Lesser Sunda Islands, Indonesia`;
 
@@ -294,7 +291,6 @@ function Home() {
     };
 
     try {
-      // ▶ Cari desa dulu
       let data = await search(villageQuery);
 
       if (data.length > 0) {
@@ -308,7 +304,6 @@ function Home() {
         return;
       }
 
-      // ▶ Desa tidak ditemukan → coba kecamatan
       data = await search(districtQuery);
 
       if (data.length > 0) {
@@ -322,7 +317,6 @@ function Home() {
         return;
       }
 
-      // ▶ Jika desa & kecamatan sama-sama tidak ditemukan
       message.error("Lokasi tidak ditemukan pada desa maupun kecamatan.");
     } catch (err) {
       console.error(err);
@@ -658,13 +652,62 @@ function Home() {
   };
 
   const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(dataList);
+    const formattedData = dataList.map((item, index) => {
+      return {
+        "No": index + 1,
+        "Nama": item.nama,
+        "NIK": item.nik,
+        "Pengusul": item.pengusul,
+        "Jumlah Keluarga": item.jumlah_keluarga,
+        "Telepon": item.telepon,
+        "Kabupaten": getNameById(item.kabupaten, geoData.regencies),
+        "Kecamatan": getNameById(item.kecamatan, geoData.districts),
+        "Desa": getNameById(item.desa, geoData.villages),
+        "Kondisi Rumah": item.kondisi_rumah,
+        "Status Kepemilikan": item.status_kepemilikan,
+        "Air Bersih": item.akses_air_bersih,
+        "MCK": item.ketersediaan_mck,
+        "Tahun Realisasi": item.tahun_realisasi,
+        "Status": item.status,
+        "Tanggal": item.created_at ? new Date(item.created_at).toLocaleDateString("id-ID") : "-",
+        "Foto Depan": item.foto_depan ? "Lihat Foto" : "-",
+        "Foto Samping": item.foto_samping ? "Lihat Foto" : "-",
+        "Foto Belakang": item.foto_belakang ? "Lihat Foto" : "-",
+        "Latitude": item.latitude,
+        "Longitude": item.longitude,
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+
+    dataList.forEach((item, index) => {
+      const rowIndex = index + 2; // Baris 1 adalah Header, jadi data mulai baris 2
+
+      // Definisi Kolom berdasarkan urutan objek di atas
+      // Q = Foto Depan, R = Foto Samping, S = Foto Belakang
+      const links = [
+        { key: 'foto_depan', col: 'Q' },
+        { key: 'foto_samping', col: 'R' },
+        { key: 'foto_belakang', col: 'S' }
+      ];
+
+      links.forEach(link => {
+        const cellAddress = `${link.col}${rowIndex}`;
+        if (item[link.key]) {
+          worksheet[cellAddress].l = {
+            Target: item[link.key],
+            Tooltip: "Klik untuk membuka foto"
+          };
+        }
+      });
+    });
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Mahyani');
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(data, 'data-mahyani.xlsx');
+    saveAs(data, `Data-Mahyani-${new Date().getTime()}.xlsx`);
   };
   console.log('position:', position)
   const mapRef = useRef(null);
@@ -799,7 +842,7 @@ function Home() {
               resetEditState();
               setTimeout(() => {
                 document.querySelector('.leaflet-popup-close-button')?.click();
-              }, 100); // memastikan DOM ada
+              }, 100);
             }}
             title={`Edit: ${editData?.nama}`}
             open={editModalVisible}
@@ -817,7 +860,7 @@ function Home() {
                 <Select
                   className="w-full"
                   placeholder="Pilih pengusul"
-                  disabled={user.role !== 'admin'} // nonaktifkan jika bukan admin
+                  disabled={user.role !== 'admin'}
                   options={[
                     {
                       value: 'BAZNAS Mataram',
